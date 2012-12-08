@@ -24,4 +24,4 @@ Also you can test your view (useful when developing...) in this way:
 
 example: http://example.com/great-page/?view=fullscreen
 
-where "fullscreen" is the name of the view. 
+where "fullscreen" is the name of the view.
