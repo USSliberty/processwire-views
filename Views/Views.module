@@ -1,0 +1,122 @@
+<?php
+
+/**
+ * Views for ProcessWire
+ * 
+ * Every Template in ProcessWire have a file associated named in this way:
+ * <templateName>.php
+ * 
+ * The aim of this module is to extend the number of files associated of
+ * a specific Template.
+ * 
+ * For example: if the template name is "page", the file associated is page.php.
+ * With Views we can have others visualization of the same Template named in this way:
+ * <view_name1>-page.php
+ * <view_name2>-page.php
+ *     |
+ *     |
+ *	   |
+ * <view_nameN>-page.php
+ */
+
+class Views extends Process implements Module{
+	
+	protected $wrapper;
+	
+	/**
+	 * getModuleInfo is a module required by all modules to tell ProcessWire about them
+	 *
+	 * @return array
+	 *
+	 */
+	public static function getModuleInfo() {
+
+		return array(
+
+			'title' => 'Views', 
+
+			'version' => 90, 
+
+			'summary' => 'Add the selection of the view of a specific page',
+			
+			'href' => '',
+			
+			'singular' => true, 
+			
+			'autoload' => true,
+			);
+	}
+
+	/**
+	 * Initialize the module
+	 * We add the hook to "loaded" event of a page.
+	 * So we have the current template file name
+	 * 
+	 * Also we add The Tab "Visualization" and we show the list of voiews.
+	 */
+	public function init() {
+		
+		$this->addHook('Page::loaded', $this, 'changeView');
+		// TODO: Check for current views in template folder.
+		// and maybe create a new FieldType.... 
+	}
+	
+	public function ready(){
+		// FIXME Insert Script for View preview
+		if(wire('page')->template == 'admin') { 
+			$this->config->scripts->add($this->config->urls->Views . "Views.js"); 
+		}
+	}
+
+	public function changeView($event){
+		// -------------------------------
+		// - The $page Object.
+			$page_temp = $event->object;
+		// -------------------------------
+		
+		// -------------------------------
+		// We check if there is the GET parameter "view" set.
+		// example: http://example.com/great-page/?view=fullscreen
+		// and also we check if the current user have the right permission to
+		// view the page.					
+			$is_preview = $page_temp->fuel('input')->get("view") && $page_temp->fuel('user')->hasPermission('page-edit');
+		// -------------------------------
+		
+		
+		if( $page_temp->get("view") || $is_preview ):
+			
+			$view = $page_temp->fuel('sanitizer')->name( $is_preview ? $page_temp->fuel('input')->get("view") : $page_temp->get("view") );
+			
+			$templateName = (string) $page_temp->template; 	// We pick the template name...
+			$template_obj = &$page_temp->template;         	// ...and the template object associated.
+			
+			
+			// ------------
+			// Now we change the template file to the one we choose.
+			   $template_obj->filename = str_replace($templateName, $view . "-" . $templateName, $template_obj->filename);
+			// ------------
+			
+		endif;
+		
+		
+	}
+
+	public function ___execute(){
+		// TODO
+		
+		
+	}
+	
+	public function ___getSelectableViews($event){
+		// TODO
+		
+		
+	}
+
+	public function ___install(){
+		// TODO
+		
+	}
+	
+
+}
