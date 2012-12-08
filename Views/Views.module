@@ -63,9 +63,9 @@ class Views extends Process implements Module{
 	
 	public function ready(){
 		// FIXME Insert Script for View preview
-		if(wire('page')->template == 'admin') { 
+		/* if(wire('page')->template == 'admin') { 
 			$this->config->scripts->add($this->config->urls->Views . "Views.js"); 
-		}
+		}*/
 	}
 
 	public function changeView($event){
