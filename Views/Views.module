@@ -19,9 +19,8 @@
  * <view_nameN>-page.php
  */
 
-class Views extends Process implements Module{
+class Views extends Wire implements Module{
 	
-	protected $wrapper;
 	
 	/**
 	 * getModuleInfo is a module required by all modules to tell ProcessWire about them
@@ -56,45 +55,48 @@ class Views extends Process implements Module{
 	 */
 	public function init() {
 		
-		$this->addHook('Page::loaded', $this, 'changeView');
+		$this->addHookAfter('Page::loaded', $this, 'changeView');
 		// TODO: Check for current views in template folder.
 		// and maybe create a new FieldType.... 
 	}
 	
-	public function ready(){
-		// FIXME Insert Script for View preview
-		/* if(wire('page')->template == 'admin') { 
-			$this->config->scripts->add($this->config->urls->Views . "Views.js"); 
-		}*/
-	}
 
 	public function changeView($event){
-		// -------------------------------
-		// - The $page Object.
-			$page_temp = $event->object;
-		// -------------------------------
+		
+		$page_temp = $event->object;
+		
+		// Avoid change view for admin
+		if("admin" == $page_temp->template) return;
 		
 		// -------------------------------
 		// We check if there is the GET parameter "view" set.
 		// example: http://example.com/great-page/?view=fullscreen
 		// and also we check if the current user have the right permission to
 		// view the page.					
-			$is_preview = $page_temp->fuel('input')->get("view") && $page_temp->fuel('user')->hasPermission('page-edit');
+			$is_preview = $this->input->get->view && $this->user->hasPermission('page-edit');
 		// -------------------------------
 		
 		
-		if( $page_temp->get("view") || $is_preview ):
+		if( $page_temp->view || $is_preview ):
 			
-			$view = $page_temp->fuel('sanitizer')->name( $is_preview ? $page_temp->fuel('input')->get("view") : $page_temp->get("view") );
+			$view = $is_preview ? $this->sanitizer->name($this->input->get->view) : $page_temp->get("view");
+			
+			// if is specificated the view "default" in the preview,
+			// for example : http://example.com/great-page/?view=default ...
+			// ... we force to use the default template file.
+			if( $view == "default" && $is_preview ) return;
 			
 			$templateName = (string) $page_temp->template; 	// We pick the template name...
 			$template_obj = &$page_temp->template;         	// ...and the template object associated.
 			
+
 			
 			// ------------
 			// Now we change the template file to the one we choose.
 			   $template_obj->filename = str_replace($templateName, $view . "-" . $templateName, $template_obj->filename);
 			// ------------
+			
+			
 			
 		endif;
 		
