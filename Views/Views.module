@@ -21,7 +21,6 @@
 
 class Views extends Wire implements Module{
 	
-	
 	/**
 	 * getModuleInfo is a module required by all modules to tell ProcessWire about them
 	 *
@@ -55,6 +54,7 @@ class Views extends Wire implements Module{
 	 */
 	public function init() {
 		
+		
 		$this->addHookAfter('Page::loaded', $this, 'changeView');
 		// TODO: Check for current views in template folder.
 		// and maybe create a new FieldType.... 
@@ -73,7 +73,7 @@ class Views extends Wire implements Module{
 		// example: http://example.com/great-page/?view=fullscreen
 		// and also we check if the current user have the right permission to
 		// view the page.					
-			$is_preview = $this->input->get->view && $this->user->hasPermission('page-edit');
+			$is_preview = $this->input->get->view && $page_temp->editable();
 		// -------------------------------
 		
 		
