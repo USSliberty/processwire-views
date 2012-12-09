@@ -33,7 +33,7 @@ class Views extends Wire implements Module{
 
 			'title' => 'Views', 
 
-			'version' => 90, 
+			'version' => 10, 
 
 			'summary' => 'Add the selection of the view of a specific page',
 			
@@ -109,14 +109,21 @@ class Views extends Wire implements Module{
 		
 	}
 	
-	public function ___getSelectableViews($event){
-		// TODO
+	public function getSelectableViews(){
+		// Get all the views
 		
 		
 	}
 
 	public function ___install(){
-		// TODO
+		// Create the field "views".
+		
+		
+	}
+	
+	public function ___uninstall(){
+		// Remove field "views".
+		
 		
 	}
 	
