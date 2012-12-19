@@ -13,15 +13,19 @@ a specific Template.
 
 For example: if the template name is "page", the file associated is "page.php".
 With Views we can have others visualization of the same Template named in this way:
-view_name1-page.php
-view_name2-page.php
+page.view_name1.php
+page.view_name2.php
     |
     |
     |
-view_nameN-page.php
+page.view_nameN.php
 
 Also you can test your view (useful when developing...) in this way:
 
 example: http://example.com/great-page/?view=fullscreen
 
-where "fullscreen" is the name of the view.
+where "fullscreen" is the name of the view...
+
+..and If you want to force the default view type:
+
+http://example.com/great-page/?view=default
