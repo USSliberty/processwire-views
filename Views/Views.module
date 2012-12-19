@@ -11,15 +11,15 @@
  * 
  * For example: if the template name is "page", the file associated is page.php.
  * With Views we can have others visualization of the same Template named in this way:
- * page.<view_name1>.php
- * page.<view_name2>.php
+ * <view_name1>-page.php
+ * <view_name2>-page.php
  *     |
  *     |
  *	   |
- * page.<view_nameN>.php
+ * <view_nameN>-page.php
  */
 
-class Views extends WireData implements Module, ConfigurableModule{
+class Views extends Wire implements Module{
 	
 	/**
 	 * getModuleInfo is a module required by all modules to tell ProcessWire about them
@@ -44,23 +44,25 @@ class Views extends WireData implements Module, ConfigurableModule{
 			'autoload' => true,
 			);
 	}
-	
-	
+
 	/**
 	 * Initialize the module
 	 * We add the hook to "loaded" event of a page.
 	 * So we have the current template file name
 	 * 
+	 * Also we add The Tab "Visualization" and we show the list of voiews.
 	 */
 	public function init() {
 		
+		
 		$this->addHookAfter('Page::loaded', $this, 'changeView');
+		// TODO: Check for current views in template folder.
+		// and maybe create a new FieldType.... 
 	}
 	
 
 	public function changeView($event){
 		
-		$directory = trim($this->data['directory']);
 		$page_temp = $event->object;
 		
 		// Avoid change view for admin
@@ -71,8 +73,8 @@ class Views extends WireData implements Module, ConfigurableModule{
 		// example: http://example.com/great-page/?view=fullscreen
 		// and also we check if the current user have the right permission to
 		// view the page.					
-		$is_preview = $this->input->get->view && $page_temp->editable();
-		
+			$is_preview = $this->input->get->view && $page_temp->editable();
+		// -------------------------------
 		
 		
 		if( $page_temp->view || $is_preview ):
@@ -84,17 +86,20 @@ class Views extends WireData implements Module, ConfigurableModule{
 			// ... we force to use the default template file.
 			if( $view == "default" && $is_preview ) return;
 			
-			$template_name = $page_temp->template->altFilename ? $page_temp->template->altFilename : (string) $page_temp->template;
-			$template_obj = &$page_temp->template;
+			$templateName = (string) $page_temp->template; 	// We pick the template name...
+			$template_obj = &$page_temp->template;         	// ...and the template object associated.
 			
+
+			
+			// ------------
 			// Now we change the template file to the one we choose.
-			// es. page.php -> page.fullscreen.php
-			$template_obj->filename = str_replace($template_name, $directory . $template_name . "." . $view, $template_obj->filename);
+			   $template_obj->filename = str_replace($templateName, $view . "-" . $templateName, $template_obj->filename);
+			// ------------
 			
-			print_r($this->getSelectableViews($template_name));
 			
 			
 		endif;
+		
 		
 	}
 
@@ -104,43 +109,9 @@ class Views extends WireData implements Module, ConfigurableModule{
 		
 	}
 	
-	public static function getModuleConfigInputfields(array $data) {
-        $inputfields = new InputfieldWrapper(); 
- 
-        $field = wire('modules')->get('InputfieldText');
-        $field->name = 'directory';
-        $field->label = "Views directory";
-		$field->description = "Enter the relative directory path where views are stored";
-		$field->notes = "es. \"views/\". Don't forget the trailing slash. All paths start from the templates directory";
-        if(isset($data['directory'])) $field->value = $data['directory'];
-        $inputfields->add($field); 
- 
-        return $inputfields; 
-    }
-	
-	public function getSelectableViews( $template_name ){
+	public function getSelectableViews(){
 		// Get all the views
-		$directory = trim($this->data['directory']);
-		$templates_directory = $this->config->paths->templates;
-		$view_list = array();
 		
-		if( is_dir( $templates_directory . $directory ) ):
-			$dir_handle = opendir( $templates_directory . $directory );
-			
-			while (false !== ($entry = readdir($dir_handle))):
-					$file_list[] = $entry;
-				
-    		endwhile;
-			
-			foreach ($file_list as $key => $value) {
-				if( preg_match("/". $template_name . "\.[a-zA-Z0-9]+\.php/i", $value) )
-					array_push($view_list, $value);
-			}
-			
-			
-		endif;
-		
-		return $view_list;
 		
 	}
 
@@ -155,5 +126,6 @@ class Views extends WireData implements Module, ConfigurableModule{
 		
 		
 	}
+	
 
 }
