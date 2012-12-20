@@ -1,5 +1,5 @@
 ===========================
-  Views for ProcessWire 0.1a
+ (DEV) Views for ProcessWire 0.1a
 ===========================
 
 ATTENTION! THIS MODULE IS A PROOF-OF-CONCEPT!
