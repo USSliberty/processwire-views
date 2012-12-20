@@ -10,150 +10,158 @@
  * a specific Template.
  * 
  * For example: if the template name is "page", the file associated is page.php.
- * With Views we can have others visualization of the same Template named in this way:
- * page.<view_name1>.php
- * page.<view_name2>.php
- *     |
- *     |
- *	   |
- * page.<view_nameN>.php
  */
 
 class Views extends WireData implements Module, ConfigurableModule{
-	
-	/**
-	 * getModuleInfo is a module required by all modules to tell ProcessWire about them
-	 *
-	 * @return array
-	 *
-	 */
-	public static function getModuleInfo() {
+    
+    /**
+     * getModuleInfo is a module required by all modules to tell ProcessWire about them
+     *
+     * @return array
+     *
+     */
+    public static function getModuleInfo() {
 
-		return array(
+        return array(
 
-			'title' => 'Views', 
+            'title' => 'Views', 
 
-			'version' => 10, 
+            'version' => 10, 
 
-			'summary' => 'Add the selection of the view of a specific page',
-			
-			'href' => '',
-			
-			'singular' => true, 
-			
-			'autoload' => true,
-			);
-	}
-	
-	
-	/**
-	 * Initialize the module
-	 * We add the hook to "loaded" event of a page.
-	 * So we have the current template file name
-	 * 
-	 */
-	public function init() {
-		
-		$this->addHookAfter('Page::loaded', $this, 'changeView');
-	}
-	
+            'summary' => 'Add the selection of the view of a specific page',
+            
+            'href' => '',
+            
+            'singular' => true, 
+            
+            'autoload' => true,
+            );
+    }
+    
+    
+    /**
+     * Initialize the module
+     * We add the hook to "loaded" event of a page.
+     * So we have the current template file name
+     * 
+     */
+    public function init() {
+        
+        $this->addHookAfter('Page::loaded', $this, 'changeView');
+    }
+    
 
-	public function changeView($event){
-		
-		$directory = trim($this->data['directory']);
-		$page_temp = $event->object;
-		
-		// Avoid change view for admin
-		if("admin" == $page_temp->template) return;
-		
-		// -------------------------------
-		// We check if there is the GET parameter "view" set.
-		// example: http://example.com/great-page/?view=fullscreen
-		// and also we check if the current user have the right permission to
-		// view the page.					
-		$is_preview = $this->input->get->view && $page_temp->editable();
-		
-		
-		
-		if( $page_temp->view || $is_preview ):
-			
-			$view = $is_preview ? $this->sanitizer->name($this->input->get->view) : $page_temp->get("view");
-			
-			// if is specificated the view "default" in the preview,
-			// for example : http://example.com/great-page/?view=default ...
-			// ... we force to use the default template file.
-			if( $view == "default" && $is_preview ) return;
-			
-			$template_name = $page_temp->template->altFilename ? $page_temp->template->altFilename : (string) $page_temp->template;
-			$template_obj = &$page_temp->template;
-			
-			// Now we change the template file to the one we choose.
-			// es. page.php -> page.fullscreen.php
-			$template_obj->filename = str_replace($template_name, $directory . $template_name . "." . $view, $template_obj->filename);
-			
-			print_r($this->getSelectableViews($template_name));
-			
-			
-		endif;
-		
-	}
+    public function changeView($event){
+        
+        $directory = trim($this->data['directory']);
+        $page_temp = $event->object;
+        
+        // Avoid change view for admin
+        if("admin" == $page_temp->template) return;
+        
+        // -------------------------------
+        // We check if there is the GET parameter "view" set.
+        // example: http://example.com/great-page/?view=fullscreen
+        // and also we check if the current user have the right permission to
+        // view the page.                   
+        $is_preview = $this->input->get->view && $page_temp->editable();
+        
+        
+        
+        if( $page_temp->view || $is_preview ):
+            
+            $view = $is_preview ? $this->sanitizer->name($this->input->get->view) : $page_temp->get("view");
+            
+            // if is specificated the view "default" in the preview,
+            // for example : http://example.com/great-page/?view=default ...
+            // ... we force to use the default template file.
+            if( $view == "default" && $is_preview ) return;
+            
+            $template_name = $page_temp->template->altFilename ? $page_temp->template->altFilename : (string) $page_temp->template;
+            $template_obj = &$page_temp->template;
+            
+            // Now we change the template file to the one we choose.
+            $template_obj->filename = str_replace($template_name, $directory . $view, $template_obj->filename);
+            
+            
+            
+        endif;
+        
+    }
 
-	public function ___execute(){
-		// TODO
-		
-		
-	}
-	
-	public static function getModuleConfigInputfields(array $data) {
+    public function ___execute(){
+        // TODO
+        
+        
+    }
+    
+    public static function getModuleConfigInputfields(array $data) {
         $inputfields = new InputfieldWrapper(); 
  
         $field = wire('modules')->get('InputfieldText');
         $field->name = 'directory';
         $field->label = "Views directory";
-		$field->description = "Enter the relative directory path where views are stored";
-		$field->notes = "es. \"views/\". Don't forget the trailing slash. All paths start from the templates directory";
+        $field->description = "Enter the relative directory path where views are stored";
+        $field->notes = "es. \"views/\". Don't forget the trailing slash. All paths start from the templates directory";
         if(isset($data['directory'])) $field->value = $data['directory'];
         $inputfields->add($field); 
  
         return $inputfields; 
     }
-	
-	public function getSelectableViews( $template_name ){
-		// Get all the views
-		$directory = trim($this->data['directory']);
-		$templates_directory = $this->config->paths->templates;
-		$view_list = array();
-		
-		if( is_dir( $templates_directory . $directory ) ):
-			$dir_handle = opendir( $templates_directory . $directory );
-			
-			while (false !== ($entry = readdir($dir_handle))):
-					$file_list[] = $entry;
-				
-    		endwhile;
-			
-			foreach ($file_list as $key => $value) {
-				if( preg_match("/". $template_name . "\.[a-zA-Z0-9]+\.php/i", $value) )
-					array_push($view_list, $value);
-			}
-			
-			
-		endif;
-		
-		return $view_list;
-		
-	}
-
-	public function ___install(){
-		// Create the field "views".
-		
-		
-	}
-	
-	public function ___uninstall(){
-		// Remove field "views".
-		
-		
-	}
+    
+    public function ___install(){
+        
+        
+        // BEGIN - Fields for View Template
+            
+        $field_view = new Field(); 
+        $field_view->type = $this->modules->get("FieldtypeText"); 
+        $field_view->name = 'view_filename'; 
+        $field_view->label = 'View filename';
+        $field_view->required = 1;
+        $field_view->save(); 
+        
+        $field_template = new Field(); 
+        $field_template->type = $this->modules->get("FieldtypeText"); 
+        $field_template->name = 'template_ref'; 
+        $field_template->label = 'The template name';
+        $field_template->required = 0;
+        $field_template->save();
+        
+        // END - Fields for View Template
+        
+        // BEGIN - Fields for the view select
+        
+        $field_view_ref = new Field(); 
+        $field_view_ref->type = $this->modules->get("FieldtypePage"); 
+        $field_view_ref->name = 'view'; 
+        $field_view_ref->label = 'View select';
+        $field_view_ref->derefAsPage = 1;
+        $field_view_ref->labelFieldName = 'title';
+        $field_view_ref->inputfield = 'InputfieldRadios';
+        $field_view_ref->save();
+        
+        // END - Fields for the view select
+        
+        //---
+        // BEGIN Template construction
+        //---
+        
+        $template_view = new Template();
+        $template_view->name = 'view';
+        $template_view->parentTemplates = array($this->template->get("admin")->id);
+        $template_view->slashUrls = 1; 
+        $template_view->noChildren = 1; 
+        $template_view->pageLabelField = 'discussions_message'; 
+        $template_view->save();
+        
+        
+    }
+    
+    public function ___uninstall(){
+        
+        
+        
+    }
 
 }
