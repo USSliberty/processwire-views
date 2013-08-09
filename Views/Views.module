@@ -2,158 +2,184 @@
 
 /**
  * Views for ProcessWire
- * 
+ *
  * Every Template in ProcessWire have a file associated named in this way:
  * <templateName>.php
- * 
+ *
  * The aim of this module is to extend the number of files associated of
  * a specific Template.
- * 
+ *
  * For example: if the template name is "page", the file associated is page.php.
- * With Views we can have others visualization of the same Template named in this way:
+ * With Views we can have others visualization of the same Template
  * page.<view_name1>.php
  * page.<view_name2>.php
  *     |
  *     |
- *	   |
+ *     |
  * page.<view_nameN>.php
  */
 
-class Views extends WireData implements Module, ConfigurableModule{
-	
-	/**
-	 * getModuleInfo is a module required by all modules to tell ProcessWire about them
-	 *
-	 * @return array
-	 *
-	 */
-	public static function getModuleInfo() {
+class Views extends WireData implements Module{
 
-		return array(
+    const fieldName      = 'view';
+    const permissionName = 'change-view';
+    public static function getModuleInfo() {
 
-			'title' => 'Views', 
+        return array(
 
-			'version' => 10, 
-
-			'summary' => 'Add the selection of the view of a specific page',
-			
-			'href' => '',
-			
-			'singular' => true, 
-			
-			'autoload' => true,
-			);
-	}
-	
-	
-	/**
-	 * Initialize the module
-	 * We add the hook to "loaded" event of a page.
-	 * So we have the current template file name
-	 * 
-	 */
-	public function init() {
-		
-		$this->addHookAfter('Page::loaded', $this, 'changeView');
-	}
-	
-
-	public function changeView($event){
-		
-		$directory = trim($this->data['directory']);
-		$page_temp = $event->object;
-		
-		// Avoid change view for admin
-		if("admin" == $page_temp->template) return;
-		
-		// -------------------------------
-		// We check if there is the GET parameter "view" set.
-		// example: http://example.com/great-page/?view=fullscreen
-		// and also we check if the current user have the right permission to
-		// view the page.					
-		$is_preview = $this->input->get->view && $page_temp->editable();
-		
-		
-		
-		if( $page_temp->view || $is_preview ):
-			
-			$view = $is_preview ? $this->sanitizer->name($this->input->get->view) : $page_temp->get("view");
-			
-			// if is specificated the view "default" in the preview,
-			// for example : http://example.com/great-page/?view=default ...
-			// ... we force to use the default template file.
-			if( $view == "default" && $is_preview ) return;
-			
-			$template_name = $page_temp->template->altFilename ? $page_temp->template->altFilename : (string) $page_temp->template;
-			$template_obj = &$page_temp->template;
-			
-			// Now we change the template file to the one we choose.
-			// es. page.php -> page.fullscreen.php
-			$template_obj->filename = str_replace($template_name, $directory . $template_name . "." . $view, $template_obj->filename);
-			
-			print_r($this->getSelectableViews($template_name));
-			
-			
-		endif;
-		
-	}
-
-	public function ___execute(){
-		// TODO
-		
-		
-	}
-	
-	public static function getModuleConfigInputfields(array $data) {
-        $inputfields = new InputfieldWrapper(); 
- 
-        $field = wire('modules')->get('InputfieldText');
-        $field->name = 'directory';
-        $field->label = "Views directory";
-		$field->description = "Enter the relative directory path where views are stored";
-		$field->notes = "es. \"views/\". Don't forget the trailing slash. All paths start from the templates directory";
-        if(isset($data['directory'])) $field->value = $data['directory'];
-        $inputfields->add($field); 
- 
-        return $inputfields; 
+            'title' => 'Views',
+            'version' => 10,
+            'summary' => 'Add the selection of the view of a specific page',
+            'href' => 'http://infofactory.it',
+            'singular' => true,
+            'autoload' => true
+            );
     }
-	
-	public function getSelectableViews( $template_name ){
-		// Get all the views
-		$directory = trim($this->data['directory']);
-		$templates_directory = $this->config->paths->templates;
-		$view_list = array();
-		
-		if( is_dir( $templates_directory . $directory ) ):
-			$dir_handle = opendir( $templates_directory . $directory );
-			
-			while (false !== ($entry = readdir($dir_handle))):
-					$file_list[] = $entry;
-				
-    		endwhile;
-			
-			foreach ($file_list as $key => $value) {
-				if( preg_match("/". $template_name . "\.[a-zA-Z0-9]+\.php/i", $value) )
-					array_push($view_list, $value);
-			}
-			
-			
-		endif;
-		
-		return $view_list;
-		
-	}
 
-	public function ___install(){
-		// Create the field "views".
-		
-		
-	}
-	
-	public function ___uninstall(){
-		// Remove field "views".
-		
-		
-	}
+
+    /**
+     * Initialize the module
+     * We add the hook before to "render" event of the class TemplateFile.
+     * So we have the current template file name and we change the template file just
+     * before the real render of the page.
+     *
+     */
+    public function init() {
+        $this->addHookBefore('TemplateFile::render', $this, 'changeView');
+    }
+
+
+    public function changeView(HookEvent $event){
+
+        $template_obj = &$event->object;
+
+
+        // Avoid change view for admin
+        // immedialitly after saving the view the page is re-loaded.
+        // So This hook haven't to be executed
+        if("admin" == (string) $this->page->template)  return;
+
+        // -------------------------------
+        // We check if there is the GET parameter "view" set.
+        // example: http://example.com/great-page/?view=fullscreen
+        // and also we check if the current user have the right permission to
+        // view the page.
+        $is_preview = $this->input->get->view && $this->page->editable();
+
+        // we change the view via get parameter
+        // ex http://example.com/great-page/?setView=<viewname>
+
+        if( $this->user->hasPermission(self::permissionName) && $this->sanitizer->name($this->input->get->setView) ):
+
+            $template_name = (string) $this->page->template;
+
+            // test if file exists or we set the default template file.
+            if( $this->sanitizer->name($this->input->get->setView) == "default"  ||
+                file_exists(str_replace($template_name, $template_name . "." . $this->sanitizer->name($this->input->get->setView), $template_obj->filename))):
+
+
+                $this->page->setOutputFormatting(false);
+
+                if( $this->sanitizer->name($this->input->get->setView) != "default" )
+                    $this->page->set(self::fieldName, $this->sanitizer->name($this->input->get->setView));
+                else
+                    $this->page->set(self::fieldName, "");
+
+                $this->page->save(self::fieldName);
+
+                $this->page->setOutputFormatting(true);
+            endif;
+
+
+        endif;
+
+
+        if( $this->page->view || $is_preview ):
+
+            $view = $is_preview ? $this->sanitizer->name($this->input->get->view) : $this->page->get("view");
+
+            // if is specificated the view "default" in the preview,
+            // for example : http://example.com/great-page/?view=default ...
+            // ... we force to use the default template file.
+            if( $view == "default" && $is_preview ) return;
+
+            $template_name = (string) $this->page->template;
+
+
+            // Now we change the template file to the one we choose.
+            // es. page.php -> page.fullscreen.php
+            $template_obj->setFilename(str_replace($template_name, $template_name . "." . $view, $template_obj->filename));
+
+        endif;
+
+
+
+    }
+
+
+    public function ___install(){
+        // Create the field "views".
+        // Check if just exists...
+        $viewField = $this->fields->get('name='.self::fieldName );
+
+        if( !$viewField ):
+            $field = new Field();
+            $field->type = $this->modules->get("FieldtypeText");
+            $field->name = self::fieldName;
+            $field->collapsed = 4;
+            $field->inputfield = 'InputfieldTextarea';
+            $field->flags = Field::flagAutojoin | Field::flagGlobal | Field::flagSystem;
+            $field->save();
+            $this->message("Created view field: " . self::fieldName);
+
+        else:
+           $this->error("The field:". self::fieldName . " just exists" );
+        endif;
+
+        // ...and we create the "change-view" permission.
+        // check also here if the permission is just exists
+        if( !$this->permissions->get(self::permissionName)->id ):
+            $perm = new Permission();
+            $perm->title = self::permissionName;
+            $perm->save();
+            $this->message("Created new permission: " . self::permissionName);
+
+            // now we set the permission to superuser
+            $superusers = $this->roles->get("superuser");
+            $superusers->addPermission($perm);
+            $superusers->save();
+            $this->message("Permission added to superuser(s)");
+
+        else:
+            $this->error("The permission: ". self::permissionName . " just exists" );
+        endif;
+
+
+
+
+    }
+
+    public function ___uninstall(){
+
+      // Remove field "views".
+      $viewField = $this->fields->get('name='.self::fieldName );
+      $viewField->flags = Field::flagSystemOverride;
+      $viewField->flags = 0;
+      $templates = $this->templates;
+      foreach( $templates as $template ):
+        if($template->hasField($viewField)) {
+            $fieldgroup = $template->fieldgroup;
+            $fieldgroup->remove($viewField);
+            $fieldgroup->save();
+            $this->message("Removed view field from ". $template->name . " fieldgroup");
+        }
+      endforeach;
+      $this->fields->delete($viewField);
+      $this->message("The field: " . self::fieldName . " is removed");
+
+
+
+
+    }
 
 }
